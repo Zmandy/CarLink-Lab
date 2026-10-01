@@ -28,7 +28,7 @@ jobs:
         run: |
           SDKMANAGER=$(find "$ANDROID_SDK_ROOT/cmdline-tools" -path "*/bin/sdkmanager" | sort -V | tail -n 1)
           yes | "$SDKMANAGER" --licenses >/dev/null || true
-          yes | "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
