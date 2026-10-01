@@ -1,0 +1,48 @@
+# Android / Gradle
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+captures/
+.externalNativeBuild/
+.cxx/
+app/build/
+
+# Local tooling
+.tools/
+
+# Signing and secrets
+*.jks
+*.keystore
+keystore.properties
+
+# Release artifacts
+*.apk
+*.aab
+*.ap_
+*.apks
+*.idsig
+
+# Local debug and device dumps
+/$null
+/NOTICE
+/META-INF/
+/window*.xml
+/adb-*.png
+/phone*.png
+/research_tucson/
+/topview*.png
+/topview*.html
+/tpms-*.png
+/tpms-template-filled*.html
+/tpms-template-filled*.png
+/vertical-car*.png
+/claude-*.png
+/scripts/render_*.py
+/scripts/tpms_ui_mockup*.html
+
+# OS / editors
+.DS_Store
+Thumbs.db
+*.swp

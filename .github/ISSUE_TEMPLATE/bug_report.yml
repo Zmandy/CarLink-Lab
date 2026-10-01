@@ -1,0 +1,46 @@
+name: Bug report
+description: Report a reproducible application or protocol problem.
+title: '[Bug] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Remove VIN, plate numbers, location, public IPs, credentials and private logs before submitting.
+  - type: input
+    id: app_version
+    attributes:
+      label: App version
+      placeholder: 0.13.2
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Phone and Android version
+    validations:
+      required: true
+  - type: input
+    id: vehicle
+    attributes:
+      label: Vehicle and head unit
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs
+      description: Do not paste credentials or private data.
+    validations:
+      required: false

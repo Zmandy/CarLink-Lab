@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=800, height=480, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>胎压监测 TPMS</title>
+<style>
+:root{
+  --bgA:#0a0f1f; --bgB:#1b1140; --b1:#2f6bff; --b2:#a23cff; --b3:#00c2a8;
+  --ink:#fff; --muted:rgba(255,255,255,.62); --glass:rgba(255,255,255,.1); --edge:rgba(255,255,255,.55);
+  --carA:rgba(255,255,255,.34); --carB:rgba(255,255,255,.08); --win:rgba(10,15,31,.6); --tire:#0c0f18; --tread:rgba(255,255,255,.18);
+  --ok:#30d158; --low:#ff9f0a; --crit:#ff453a;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ /* 默认即深色 */ } }
+:root[data-theme="light"]{
+  --bgA:#dbe7ff; --bgB:#efe3ff; --b1:#7fa8ff; --b2:#d6a4ff; --b3:#8fe6d8;
+  --ink:#0b1220; --muted:rgba(11,18,32,.6); --glass:rgba(255,255,255,.4); --edge:rgba(255,255,255,.95);
+  --carA:rgba(255,255,255,.9); --carB:rgba(255,255,255,.35); --win:rgba(30,40,70,.55); --tire:#1d2230; --tread:rgba(255,255,255,.25);
+  --ok:#22a548; --low:#e08600; --crit:#e5322b;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bgA:#dbe7ff; --bgB:#efe3ff; --b1:#7fa8ff; --b2:#d6a4ff; --b3:#8fe6d8;
+    --ink:#0b1220; --muted:rgba(11,18,32,.6); --glass:rgba(255,255,255,.4); --edge:rgba(255,255,255,.95);
+    --carA:rgba(255,255,255,.9); --carB:rgba(255,255,255,.35); --win:rgba(30,40,70,.55); --tire:#1d2230; --tread:rgba(255,255,255,.25);
+    --ok:#22a548; --low:#e08600; --crit:#e5322b;
+  }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  font-family:-apple-system,"SF Pro Display","PingFang SC","Helvetica Neue",system-ui,sans-serif;
+  color:var(--ink); overflow:hidden; background:
+    radial-gradient(50% 40% at 15% 15%,var(--b1),transparent 70%),
+    radial-gradient(45% 40% at 90% 30%,var(--b2),transparent 70%),
+    radial-gradient(50% 45% at 60% 100%,var(--b3),transparent 70%),
+    linear-gradient(160deg,var(--bgA),var(--bgB));
+}
+.app{height:100%;display:flex;flex-direction:column;align-items:center;padding:14px 16px 16px;gap:12px;
+  --cw:min(34vw,calc((100vh - 310px)/2)); --cw:min(34vw,calc((100svh - 310px)/2))}
+
+/* 液态玻璃 */
+.glass{
+  position:relative;background:var(--glass);
+  -webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);
+  backdrop-filter:url(#lg) blur(6px) saturate(180%);
+  box-shadow:inset 0 1px 0 var(--edge),inset 0 -1px 0 rgba(255,255,255,.1),inset 0 0 22px rgba(255,255,255,.12),0 14px 40px rgba(0,0,0,.25);
+}
+.glass::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;
+  background:conic-gradient(from 210deg,rgba(255,255,255,.85),rgba(255,255,255,.04) 25%,rgba(255,255,255,.6) 50%,rgba(255,255,255,.04) 75%,rgba(255,255,255,.85));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude}
+
+.top{width:100%;max-width:980px;display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-radius:999px}
+.top b{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.top span{color:var(--muted);font-variant-numeric:tabular-nums;font-size:21px;font-weight:700}
+.status{padding:9px 18px;border-radius:999px;font-weight:600;font-size:15px;display:flex;align-items:center;gap:9px;--c:var(--ok)}
+.status i,.dot{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c);flex:none}
+
+/* 舞台:左卡片 | 车 | 右卡片 */
+.stage{margin:auto 0;width:100%;max-width:980px;height:calc(var(--cw)*2);
+  display:grid;grid-template-columns:1fr var(--cw) 1fr;grid-template-rows:1fr 1fr;column-gap:calc(var(--cw)*.12)}
+.car{grid-column:2;grid-row:1/3;width:100%;height:100%;overflow:visible}
+.card{align-self:center;padding:12px 14px;border-radius:24px;min-width:0;--c:var(--ok)}
+.card.l{grid-column:1;justify-self:end;width:min(100%,220px)}
+.card.r{grid-column:3;justify-self:start;width:min(100%,220px)}
+.card.f{grid-row:1}.card.b{grid-row:2}
+.card::after{content:"";position:absolute;top:50%;height:2px;width:calc(var(--cw)*.12);background:var(--c);box-shadow:0 0 8px var(--c);border-radius:2px}
+.card.l::after{left:100%}.card.r::after{right:100%}
+.name{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--muted)}
+.val{font-size:clamp(28px,6vw,46px);font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-top:4px;font-variant-numeric:tabular-nums}
+.val small{font-size:.38em;font-weight:600;color:var(--muted);margin-left:4px;letter-spacing:0}
+.meta{font-size:13px;margin-top:2px;color:var(--c);font-weight:600}
+.meta em{font-style:normal;color:var(--muted);font-weight:500}
+
+.s-ok{--c:var(--ok)}.s-low,.s-high{--c:var(--low)}.s-crit{--c:var(--crit)}.s-na{--c:var(--muted)}
+.wheel{filter:drop-shadow(0 0 7px var(--c))}
+.tire rect{fill:var(--tire);stroke:var(--c);stroke-width:3}
+.tire path{stroke:var(--tread);stroke-width:2;stroke-linecap:round;fill:none}
+.s-crit.wheel{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{filter:drop-shadow(0 0 16px var(--c))}}
+
+.fuel{width:100%;max-width:980px;border-radius:28px;padding:14px 20px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px 16px}
+.fuel>div{text-align:center}
+.fuel .name{justify-content:center}
+.fuel .v2{display:flex;align-items:baseline;justify-content:center;gap:4px}
+.fuel .v2{font-size:clamp(22px,4.2vw,32px);font-weight:700;letter-spacing:-.02em;margin-top:2px;font-variant-numeric:tabular-nums}
+.fuel .v2 small{font-size:.42em;font-weight:600;color:var(--muted);margin-left:4px;letter-spacing:0}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.seg{display:flex;padding:4px;border-radius:999px}
+button{appearance:none;border:0;cursor:pointer;font:inherit;color:var(--ink);background:transparent}
+.seg button{padding:8px 16px;border-radius:999px;font-weight:600;font-size:14px;transition:background .25s}
+.seg button[aria-pressed="true"]{background:rgba(255,255,255,.28);box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.demo{padding:12px 20px;border-radius:999px;font-weight:600;font-size:14px;transition:transform .25s cubic-bezier(.3,1.6,.5,1)}
+.demo:active{transform:scale(.95)}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+@media (prefers-reduced-motion:reduce){.s-crit.wheel{animation:none}.demo,.seg button{transition:none}}
+
+@media (max-height:520px) and (max-width:900px){
+  .app{padding:8px 14px 10px;gap:6px;--cw:122px}
+  .top{max-width:100%;padding:6px 14px}
+  .top b{font-size:30px}.top span{font-size:19px}
+  .status{padding:6px 14px;font-size:13px;gap:7px}
+  .stage{max-width:100%;height:232px;grid-template-columns:1fr var(--cw) 1fr;column-gap:10px}
+  .card{padding:8px 10px;border-radius:20px;width:min(100%,210px)}
+  .name{font-size:11px}.val{font-size:33px;margin-top:2px}.val small{font-size:.34em}
+  .meta{font-size:11px;margin-top:1px}.card::after{width:10px}
+  .fuel{max-width:100%;border-radius:22px;padding:8px 14px;gap:6px 12px}
+  .fuel .v2{font-size:24px;margin-top:0}.fuel .name{font-size:11px}
+  .ctl{gap:6px}.seg{padding:3px}.seg button{padding:6px 12px;font-size:12px}
+  .demo{padding:7px 13px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="top"><b id="welcome-title">欢迎公主上车</b><span id="clock">--:--</span></div>
+  <div class="glass status s-ok" id="status"><i></i><span id="stxt">四轮胎压正常</span></div>
+
+  <div class="stage">
+    <div class="glass card l f s-ok" id="c-fl"><div class="name">左前轮<span class="dot"></span></div><div class="val"></div><div class="meta"></div></div>
+    <div class="glass card r f s-ok" id="c-fr"><div class="name">右前轮<span class="dot"></span></div><div class="val"></div><div class="meta"></div></div>
+    <div class="glass card l b s-ok" id="c-rl"><div class="name">左后轮<span class="dot"></span></div><div class="val"></div><div class="meta"></div></div>
+    <div class="glass card r b s-ok" id="c-rr"><div class="name">右后轮<span class="dot"></span></div><div class="val"></div><div class="meta"></div></div>
+
+    <!-- 汽车俯视图 -->
+    <svg class="car" viewBox="0 0 200 400" aria-label="汽车俯视图">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--carA)"/><stop offset="1" style="stop-color:var(--carB)"/></linearGradient>
+        <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".5" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-color="#fff" stop-opacity=".6"/></linearGradient>
+        <g id="tire" class="tire"><rect width="22" height="62" rx="8"/><path d="M5 12h12M5 22h12M5 32h12M5 42h12M5 52h12"/></g>
+      </defs>
+      <!-- 四个轮胎(先画,车身压在上面) -->
+      <g class="wheel s-ok" id="w-fl"><use href="#tire" x="22" y="70"/></g>
+      <g class="wheel s-ok" id="w-fr"><use href="#tire" x="156" y="70"/></g>
+      <g class="wheel s-ok" id="w-rl"><use href="#tire" x="22" y="270"/></g>
+      <g class="wheel s-ok" id="w-rr"><use href="#tire" x="156" y="270"/></g>
+      <!-- 后视镜 -->
+      <ellipse cx="34" cy="124" rx="9" ry="5" fill="url(#bg)" stroke="url(#rim)" stroke-width="1.2"/>
+      <ellipse cx="166" cy="124" rx="9" ry="5" fill="url(#bg)" stroke="url(#rim)" stroke-width="1.2"/>
+      <!-- 车身 -->
+      <path d="M100 12C140 12 160 40 160 92L160 308C160 360 140 388 100 388C60 388 40 360 40 308L40 92C40 40 60 12 100 12Z" fill="url(#bg)" stroke="url(#rim)" stroke-width="1.6"/>
+      <path d="M100 26V116" stroke="rgba(255,255,255,.25)" stroke-width="1"/>
+      <!-- 车窗 -->
+      <path d="M62 130Q100 116 138 130L132 172Q100 163 68 172Z" fill="var(--win)" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+      <rect x="66" y="176" width="68" height="74" rx="16" fill="rgba(255,255,255,.14)" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+      <path d="M68 254Q100 260 132 254L138 288Q100 278 62 288Z" fill="var(--win)" stroke="rgba(255,255,255,.4)" stroke-width="1"/>
+      <!-- 车灯 -->
+      <path d="M60 52Q62 41 84 38L84 46Q70 47 63 58Z" fill="#fff" opacity=".9"/>
+      <path d="M140 52Q138 41 116 38L116 46Q130 47 137 58Z" fill="#fff" opacity=".9"/>
+      <rect x="62" y="366" width="26" height="6" rx="3" fill="#ff453a"/>
+      <rect x="112" y="366" width="26" height="6" rx="3" fill="#ff453a"/>
+    </svg>
+  </div>
+
+  <div class="glass fuel" aria-label="燃油消耗">
+    <div><div class="name">燃油消耗量</div><div class="v2"><span id="f-vol">N/A</span><small>L</small></div></div>
+    <div><div class="name">当前油价</div><div class="v2"><span id="f-price">N/A</span><small>元/L</small></div></div>
+    <div><div class="name">本次燃油消费</div><div class="v2"><span id="f-cost">N/A</span><small>元</small></div></div>
+  </div>
+
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="lg" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+    <feTurbulence type="fractalNoise" baseFrequency="0.01 0.014" numOctaves="2" seed="7" result="n"/>
+    <feGaussianBlur in="n" stdDeviation="2" result="b"/>
+    <feDisplacementMap in="SourceGraphic" in2="b" scale="36" xChannelSelector="R" yChannelSelector="G"/>
+  </filter>
+</svg>
+
+<script>
+(function(){
+  var ids=['fl','fr','rl','rr'], names={fl:'左前轮',fr:'右前轮',rl:'左后轮',rr:'右后轮'};
+  var scenes=[[[null,null],[null,null],[null,null],[null,null]]], unit='kpa';
+  function num(v){return typeof v==='number' && isFinite(v)}
+  function validPressure(v){return num(v) && v>0}
+  function lvl(p){if(!validPressure(p))return 'na';return p<170?'crit':p<205?'low':p>290?'high':'ok'}
+  var label={ok:'正常',low:'偏低',high:'偏高',crit:'过低',na:'无数据'};
+  function fmt(p){if(!validPressure(p))return 'N/A';return unit==='psi'?(p*0.145038).toFixed(1):unit==='bar'?(p/100).toFixed(2):String(p)}
+  function setLvl(el,l){el.classList.remove('s-ok','s-low','s-high','s-crit','s-na');el.classList.add('s-'+l)}
+  function render(){
+    var worst='ok',missing=false,msg=[];
+    var data=scenes[0];
+    ids.forEach(function(k,i){
+      var d=(data && data[i]) || [null,null], p=d[0], t=d[1], l=lvl(p), c=document.getElementById('c-'+k);
+      c.querySelector('.val').innerHTML=fmt(p)+(validPressure(p)?'<small>'+(unit==='kpa'?'kPa':unit)+'</small>':'');
+      if(validPressure(p) && num(t)){
+        c.querySelector('.meta').innerHTML=label[l]+' <em>· '+t+'°C</em>';
+      } else {
+        c.querySelector('.meta').innerHTML='<em>等待数据</em>';
+        missing=true;
+      }
+      setLvl(c,l);setLvl(document.getElementById('w-'+k),l);
+      if(l==='na'){missing=true}
+      else if(l!=='ok'){msg.push(names[k]+label[l]);if(l==='crit'||worst==='ok')worst=(worst==='crit')?'crit':l}
+    });
+    var s=document.getElementById('status');
+    setLvl(s,missing?'na':worst);
+    document.getElementById('stxt').textContent=missing?'等待胎压数据':(msg.length?msg.join('、'):'四轮胎压正常');
+  }
+  function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})}
+  var fuelData={volume:null,price:null,cost:null};
+  function fuelValue(v,digits){return num(v)?v.toFixed(digits):'N/A'}
+  function fuel(){
+    document.getElementById('f-vol').textContent=fuelValue(fuelData.volume,2);
+    document.getElementById('f-price').textContent=fuelValue(fuelData.price,2);
+    document.getElementById('f-cost').textContent=fuelValue(fuelData.cost,2);
+  }
+  window.updateDashboard=function(data){
+    if(!data)return;
+    if(data.title)document.getElementById('welcome-title').textContent=data.title;
+    if(data.tires && data.tires.length===4){scenes[0]=data.tires}else{scenes[0]=[[null,null],[null,null],[null,null],[null,null]]}
+    fuelData.volume=num(data.volume)?data.volume:null;
+    fuelData.price=num(data.price)?data.price:null;
+    fuelData.cost=num(data.cost)?data.cost:(num(fuelData.volume)&&num(fuelData.price)?fuelData.volume*fuelData.price:null);
+    render();fuel();
+  };
+  tick();setInterval(tick,15000);render();fuel();
+})();
+</script>
+</body>
+</html>

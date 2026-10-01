@@ -1,0 +1,33 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'io.github.carlinklab'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "io.github.carlinklab"
+        minSdk 26
+        targetSdk 34
+        versionCode 19
+        versionName "0.13.2"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.activity:activity:1.9.3'
+    implementation 'androidx.media3:media3-exoplayer:1.5.1'
+    implementation 'androidx.media3:media3-session:1.5.1'
+    implementation 'androidx.media3:media3-ui:1.5.1'
+}
