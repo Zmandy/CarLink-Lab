@@ -10,7 +10,7 @@ These values were confirmed on a personal 2015/2016 Tucson TL 1.6T G4FJ. Other m
 - Sensor record: 4-byte ID + pressure + temperature + status + sequence
 - Record starts: 2, 10, 18, 26
 - Pressure: raw / 4 * 6.894757 kPa
-- Temperature: raw - 40 degrees Celsius
+- Temperature: raw - 50 degrees Celsius
 - Mapping: record 1-4 to FL, FR, RL, RR
 
 Do not decode pressure or temperature from the sensor ID bytes.

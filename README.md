@@ -82,7 +82,7 @@ CarLife head unit <-- H.264 <-- H264FrameEncoder
 本项目当前针对目标车辆使用：
 
 - 压力：rawPressure / 4 * 6.894757 kPa
-- 温度：rawTemperature - 40 摄氏度
+- 温度：rawTemperature - 50 摄氏度
 - 轮位：记录 1-4 对应左前、右前、左后、右后
 - 燃油：优先 015E；不可用时用 0110 MAF 与 010D 车速计算
 - 油价默认使用第三方接口，可在设置中更换省份和汽油标号

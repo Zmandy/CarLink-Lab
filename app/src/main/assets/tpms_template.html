@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=800, height=480, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>胎压监测 TPMS</title>
 <style>
 :root{
@@ -110,6 +110,21 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
   .ctl{gap:6px}.seg{padding:3px}.seg button{padding:6px 12px;font-size:12px}
   .demo{padding:7px 13px;font-size:12px}
 }
+
+/* Calm, high contrast dashboard for both phone and head unit. */
+:root{--bgA:#0b141d;--bgB:#101f2a;--b1:#122c40;--b2:#162334;--b3:#14332f;--glass:#142431;--edge:rgba(125,178,198,.18);--ok:#65ddc8}
+body{background:linear-gradient(145deg,var(--bgA),var(--bgB))}
+.glass{backdrop-filter:none;-webkit-backdrop-filter:none;border:1px solid var(--edge);box-shadow:0 6px 24px rgba(0,0,0,.12)}
+.glass::before{display:none}
+.top{border-radius:16px}.card{border-radius:18px}.fuel{border-radius:18px;grid-template-columns:repeat(4,1fr)}
+@media(max-width:500px) and (min-height:521px){
+ html,body{height:auto;min-height:100%;overflow:auto}
+ .app{min-height:100vh;height:auto;padding:20px 16px;gap:16px;--cw:100px}
+ .top b{font-size:22px}.top span{font-size:16px}
+ .stage{height:290px;column-gap:8px;margin:12px 0}
+ .card{padding:12px 8px}.val{font-size:26px}.meta{font-size:11px}.card::after{width:8px}
+ .fuel{grid-template-columns:repeat(2,1fr);gap:20px;padding:18px 12px}.fuel .v2{font-size:25px}
+}
 </style>
 </head>
 <body>
@@ -154,6 +169,7 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
   </div>
 
   <div class="glass fuel" aria-label="燃油消耗">
+    <div><div class="name" id="f-live-label">实时油耗</div><div class="v2"><span id="f-live">N/A</span><small id="f-live-unit">L/100km</small></div></div>
     <div><div class="name">燃油消耗量</div><div class="v2"><span id="f-vol">N/A</span><small>L</small></div></div>
     <div><div class="name">当前油价</div><div class="v2"><span id="f-price">N/A</span><small>元/L</small></div></div>
     <div><div class="name">本次燃油消费</div><div class="v2"><span id="f-cost">N/A</span><small>元</small></div></div>
@@ -188,7 +204,7 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
       if(validPressure(p) && num(t)){
         c.querySelector('.meta').innerHTML=label[l]+' <em>· '+t+'°C</em>';
       } else {
-        c.querySelector('.meta').innerHTML='<em>等待数据</em>';
+        c.querySelector('.meta').innerHTML=validPressure(p)?label[l]+' <em>· 胎温待更新</em>':'<em>等待数据</em>';
         missing=true;
       }
       setLvl(c,l);setLvl(document.getElementById('w-'+k),l);
@@ -200,9 +216,14 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
     document.getElementById('stxt').textContent=missing?'等待胎压数据':(msg.length?msg.join('、'):'四轮胎压正常');
   }
   function tick(){document.getElementById('clock').textContent=new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit',hour12:false})}
-  var fuelData={volume:null,price:null,cost:null};
+  var fuelData={volume:null,price:null,cost:null,instant:null,rate:null,speed:null};
   function fuelValue(v,digits){return num(v)?v.toFixed(digits):'N/A'}
   function fuel(){
+    var moving=num(fuelData.speed)&&fuelData.speed>5;
+    var idle=num(fuelData.speed)&&fuelData.speed<=5;
+    document.getElementById('f-live-label').textContent=idle?'怠速燃油':'实时油耗';
+    document.getElementById('f-live-unit').textContent=idle?'L/h':'L/100km';
+    document.getElementById('f-live').textContent=fuelValue(moving?fuelData.instant:(idle?fuelData.rate:null),moving?1:2);
     document.getElementById('f-vol').textContent=fuelValue(fuelData.volume,2);
     document.getElementById('f-price').textContent=fuelValue(fuelData.price,2);
     document.getElementById('f-cost').textContent=fuelValue(fuelData.cost,2);
@@ -211,6 +232,9 @@ button:focus-visible{outline:2px solid var(--ink);outline-offset:3px}
     if(!data)return;
     if(data.title)document.getElementById('welcome-title').textContent=data.title;
     if(data.tires && data.tires.length===4){scenes[0]=data.tires}else{scenes[0]=[[null,null],[null,null],[null,null],[null,null]]}
+    fuelData.instant=num(data.instant)?data.instant:null;
+    fuelData.rate=num(data.rate)?data.rate:null;
+    fuelData.speed=num(data.speed)?data.speed:null;
     fuelData.volume=num(data.volume)?data.volume:null;
     fuelData.price=num(data.price)?data.price:null;
     fuelData.cost=num(data.cost)?data.cost:(num(fuelData.volume)&&num(fuelData.price)?fuelData.volume*fuelData.price:null);

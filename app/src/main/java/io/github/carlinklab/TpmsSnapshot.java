@@ -20,6 +20,12 @@ public final class TpmsSnapshot {
     public final double tripFuelLiters;
     public final double currentCostYuan;
     public final double fuelPriceYuanPerLiter;
+    public final int drivingScore;
+    public final boolean drivingScoreAvailable;
+    public final int harshAccelerationCount;
+    public final int harshBrakingCount;
+    public final int overspeedCount;
+    public final double idlePercent;
 
     public TpmsSnapshot(
             int frontLeftKpa,
@@ -84,6 +90,40 @@ public final class TpmsSnapshot {
             double currentCostYuan,
             double fuelPriceYuanPerLiter
     ) {
+        this(frontLeftKpa, frontRightKpa, rearLeftKpa, rearRightKpa,
+                frontLeftTempC, frontRightTempC, rearLeftTempC, rearRightTempC,
+                updatedAtMillis, stale, source, speedKmh, fuelRateLph,
+                instantL100Km, averageL100Km, fuelAvailable, tripFuelLiters,
+                currentCostYuan, fuelPriceYuanPerLiter, 0, false, 0, 0, 0, 0);
+    }
+
+    public TpmsSnapshot(
+            int frontLeftKpa,
+            int frontRightKpa,
+            int rearLeftKpa,
+            int rearRightKpa,
+            int frontLeftTempC,
+            int frontRightTempC,
+            int rearLeftTempC,
+            int rearRightTempC,
+            long updatedAtMillis,
+            boolean stale,
+            String source,
+            int speedKmh,
+            double fuelRateLph,
+            double instantL100Km,
+            double averageL100Km,
+            boolean fuelAvailable,
+            double tripFuelLiters,
+            double currentCostYuan,
+            double fuelPriceYuanPerLiter,
+            int drivingScore,
+            boolean drivingScoreAvailable,
+            int harshAccelerationCount,
+            int harshBrakingCount,
+            int overspeedCount,
+            double idlePercent
+    ) {
         this.frontLeftKpa = frontLeftKpa;
         this.frontRightKpa = frontRightKpa;
         this.rearLeftKpa = rearLeftKpa;
@@ -103,5 +143,11 @@ public final class TpmsSnapshot {
         this.tripFuelLiters = tripFuelLiters;
         this.currentCostYuan = currentCostYuan;
         this.fuelPriceYuanPerLiter = fuelPriceYuanPerLiter;
+        this.drivingScore = drivingScore;
+        this.drivingScoreAvailable = drivingScoreAvailable;
+        this.harshAccelerationCount = harshAccelerationCount;
+        this.harshBrakingCount = harshBrakingCount;
+        this.overspeedCount = overspeedCount;
+        this.idlePercent = idlePercent;
     }
 }

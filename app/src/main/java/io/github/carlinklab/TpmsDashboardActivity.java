@@ -26,8 +26,12 @@ public final class TpmsDashboardActivity extends ComponentActivity implements Tp
         setContentView(R.layout.activity_tpms_dashboard);
         statusView = findViewById(R.id.tpms_status);
         previewView = findViewById(R.id.tpms_preview);
-        previewBitmap = Bitmap.createBitmap(800, 480, Bitmap.Config.ARGB_8888);
-        renderer = new WebViewDashboardRenderer(this, 800, 480);
+        android.util.DisplayMetrics display = getResources().getDisplayMetrics();
+        boolean export = getIntent().getBooleanExtra("export_preview", false);
+        int width = export ? 800 : Math.max(320, Math.round(display.widthPixels / display.density));
+        int height = export ? 480 : Math.max(480, Math.round(display.heightPixels / display.density) - 56);
+        previewBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        renderer = new WebViewDashboardRenderer(this, width, height);
         renderer.copyTo(previewBitmap);
         previewView.setImageBitmap(previewBitmap);
 

@@ -34,6 +34,7 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
     private final Runnable periodicRefresh = new Runnable() {
         @Override
         public void run() {
+            if (pageReady && !closed) pushDashboardData();
             drawFrameNow();
             if (!closed) {
                 mainHandler.postDelayed(this, PERIODIC_REFRESH_MS);
@@ -107,6 +108,7 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
 
     public void update(@Nullable TpmsSnapshot snapshot, String status) {
         mainHandler.post(() -> {
+            if (closed) return;
             this.snapshot = snapshot;
             if (status != null) {
                 this.status = status;
@@ -159,13 +161,17 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
         try {
             JSONObject data = new JSONObject();
             data.put("title", DashboardPreferences.getTitle(webView.getContext()));
-            if (snapshot != null && !snapshot.stale) {
+            if (snapshot != null && !snapshot.stale
+                    && System.currentTimeMillis() - snapshot.updatedAtMillis < 30_000L) {
                 JSONArray tires = new JSONArray();
                 tires.put(tire(snapshot.frontLeftKpa, snapshot.frontLeftTempC));
                 tires.put(tire(snapshot.frontRightKpa, snapshot.frontRightTempC));
                 tires.put(tire(snapshot.rearLeftKpa, snapshot.rearLeftTempC));
                 tires.put(tire(snapshot.rearRightKpa, snapshot.rearRightTempC));
                 data.put("tires", tires);
+                data.put("instant", snapshot.fuelAvailable && snapshot.speedKmh > 5 ? snapshot.instantL100Km : JSONObject.NULL);
+                data.put("rate", snapshot.fuelAvailable ? snapshot.fuelRateLph : JSONObject.NULL);
+                data.put("speed", snapshot.speedKmh >= 0 ? snapshot.speedKmh : JSONObject.NULL);
                 if (snapshot.fuelAvailable) {
                     data.put("volume", snapshot.tripFuelLiters);
                     double price = snapshot.fuelPriceYuanPerLiter > 0.0d
@@ -184,6 +190,12 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
                     data.put("cost", JSONObject.NULL);
                 }
                 data.put("status", status);
+                data.put("scoreAvailable", snapshot.drivingScoreAvailable);
+                data.put("score", snapshot.drivingScore);
+                data.put("harshAccel", snapshot.harshAccelerationCount);
+                data.put("harshBrake", snapshot.harshBrakingCount);
+                data.put("overspeed", snapshot.overspeedCount);
+                data.put("idlePercent", snapshot.idlePercent);
             }
             String script = "window.updateDashboard(" + data + ");";
             webView.evaluateJavascript(script, value -> scheduleDraw(30L));
@@ -194,8 +206,8 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
 
     private static JSONArray tire(int pressureKpa, int temperatureC) {
         JSONArray tire = new JSONArray();
-        tire.put(pressureKpa);
-        tire.put(temperatureC);
+        tire.put(pressureKpa > 0 ? pressureKpa : JSONObject.NULL);
+        tire.put(temperatureC != Integer.MIN_VALUE ? temperatureC : JSONObject.NULL);
         return tire;
     }
 

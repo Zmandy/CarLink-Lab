@@ -38,6 +38,7 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
     private FuelData lastFuel = FuelData.empty();
     private long lastFuelSampleMs;
     private double totalFuelLiters;
+    private final DrivingScoreTracker drivingScoreTracker = new DrivingScoreTracker();
     private double totalDistanceKm;
 
     public TucsonTpmsDataSource(Context context, String host, int port) {
@@ -59,6 +60,7 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
     public void stop() {
         running.set(false);
         closeQuietly();
+        executor.shutdownNow();
     }
 
     @Override
@@ -79,10 +81,26 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
                 lastFuelSampleMs = 0L;
                 status("TPMS 数据源已连接");
                 while (running.get()) {
+                    sendCommand("ATSH7D6", 1500);
+                    sendCommand("ATCRA7DE", 1500);
                     String response = sendCommand("2106", 7000);
                     TpmsSnapshot tireSnapshot = parse2106(response);
-                    if (tireSnapshot != null) {
-                        FuelData fuel = readFuelData();
+                    FuelData fuel = readFuelData();
+                    if (tireSnapshot == null) {
+                        tireSnapshot = new TpmsSnapshot(0, 0, 0, 0,
+                                Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE, Integer.MIN_VALUE,
+                                System.currentTimeMillis(), false, getName());
+                        status("胎压暂不可用，继续读取发动机燃油数据");
+                    }
+                    if (running.get()) {
+                        DrivingScoreTracker.Result driving = fuel.speedFresh
+                                ? drivingScoreTracker.update(
+                                fuel.speedKmh,
+                                fuel.fuelRateLph,
+                                fuel.averageL100Km,
+                                System.currentTimeMillis()
+                        )
+                                : drivingScoreTracker.current();
                         TpmsSnapshot snapshot = new TpmsSnapshot(
                                 tireSnapshot.frontLeftKpa, tireSnapshot.frontRightKpa,
                                 tireSnapshot.rearLeftKpa, tireSnapshot.rearRightKpa,
@@ -91,7 +109,10 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
                                 tireSnapshot.updatedAtMillis, false, tireSnapshot.source,
                                 fuel.speedKmh, fuel.fuelRateLph, fuel.instantL100Km,
                                 fuel.averageL100Km, fuel.available, fuel.tripFuelLiters,
-                                fuel.currentCostYuan, fuel.fuelPriceYuanPerLiter
+                                fuel.currentCostYuan, fuel.fuelPriceYuanPerLiter,
+                                driving.score, driving.available,
+                                driving.harshAccelerationCount, driving.harshBrakingCount,
+                                driving.overspeedCount, driving.idlePercent
                         );
                         listener.onSnapshot(snapshot);
                     } else {
@@ -159,10 +180,11 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
     }
 
     private FuelData readFuelData() {
-        int speedKmh = lastFuel.speedKmh;
-        double mafGps = lastFuel.mafGps;
-        double fuelRateLph = lastFuel.fuelRateLph;
+        int speedKmh = -1;
+        double mafGps = 0;
+        double fuelRateLph = 0;
         boolean fresh = false;
+        boolean speedFresh = false;
         boolean rateFresh = false;
 
         try {
@@ -172,14 +194,7 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
             byte[] speed = parseStandardPayload(sendCommand("010D", 3500), 0x41, 0x0D);
             if (speed != null && speed.length >= 3) {
                 speedKmh = speed[2] & 0xFF;
-                fresh = true;
-            }
-
-            byte[] maf = parseStandardPayload(sendCommand("0110", 3500), 0x41, 0x10);
-            if (maf != null && maf.length >= 4) {
-                mafGps = (((maf[2] & 0xFF) << 8) | (maf[3] & 0xFF)) / 100.0d;
-                fuelRateLph = mafGps / GASOLINE_AFR / GASOLINE_GRAMS_PER_LITER * 3600.0d;
-                rateFresh = true;
+                speedFresh = true;
                 fresh = true;
             }
 
@@ -188,6 +203,14 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
                 fuelRateLph = (((directRate[2] & 0xFF) << 8) | (directRate[3] & 0xFF)) / 20.0d;
                 rateFresh = true;
                 fresh = true;
+            } else {
+                byte[] maf = parseStandardPayload(sendCommand("0110", 3500), 0x41, 0x10);
+                if (maf != null && maf.length >= 4) {
+                    mafGps = (((maf[2] & 0xFF) << 8) | (maf[3] & 0xFF)) / 100.0d;
+                    fuelRateLph = mafGps / GASOLINE_AFR / GASOLINE_GRAMS_PER_LITER * 3600.0d;
+                    rateFresh = true;
+                    fresh = true;
+                }
             }
 
             if (!rateFresh) {
@@ -195,21 +218,19 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
             }
             if (!fresh && fuelRateLph <= 0.0d) {
                 fuelRateLph = 0.0d;
-                speedKmh = 0;
+                speedKmh = -1;
             }
 
             double instant = speedKmh > 5 && fuelRateLph > 0.0d
                     ? fuelRateLph / speedKmh * 100.0d
                     : 0.0d;
             long now = System.currentTimeMillis();
-            if (lastFuelSampleMs > 0L && fresh) {
+            if (lastFuelSampleMs > 0L && rateFresh && speedFresh) {
                 double hours = Math.min(30_000.0d, now - lastFuelSampleMs) / 3_600_000.0d;
                 totalFuelLiters += Math.max(0.0d, fuelRateLph) * hours;
                 totalDistanceKm += Math.max(0, speedKmh) * hours;
             }
-            if (fresh) {
-                lastFuelSampleMs = now;
-            }
+            lastFuelSampleMs = rateFresh && speedFresh ? now : 0L;
             double average = totalDistanceKm > 0.05d
                     ? totalFuelLiters / totalDistanceKm * 100.0d
                     : 0.0d;
@@ -217,14 +238,16 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
             double currentCost = totalFuelLiters * Math.max(0.0d, price);
             FuelData result = new FuelData(
                     speedKmh, mafGps, fuelRateLph, instant, average,
-                    totalFuelLiters, currentCost, price, rateFresh
+                    totalFuelLiters, currentCost, price, rateFresh, speedFresh
             );
             if (fresh) {
                 lastFuel = result;
             }
             return result;
         } catch (Exception error) {
-            return lastFuel;
+            lastFuelSampleMs = 0L;
+            status("燃油读取失败：" + error.getMessage());
+            return FuelData.empty();
         } finally {
             try {
                 sendCommand("ATSH7D6", 1500);
@@ -236,40 +259,7 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
     }
 
     private static byte[] parseStandardPayload(String raw, int service, int pid) {
-        if (raw == null || raw.isEmpty()) {
-            return null;
-        }
-        String upper = raw.toUpperCase(Locale.US);
-        if (upper.contains("NO DATA") || upper.contains("CAN ERROR")
-                || upper.contains("BUS ERROR") || upper.contains("DATA ERROR")) {
-            return null;
-        }
-        for (String line : raw.split("\\r\\n|\\r|\\n")) {
-            String hex = normalizeHex(line);
-            if (hex.length() < 4) {
-                continue;
-            }
-            int headerChars = detectHeaderChars(hex);
-            if (headerChars < 0) {
-                continue;
-            }
-            String body = hex.substring(headerChars);
-            if (body.length() >= 4) {
-                int first = Integer.parseInt(body.substring(0, 2), 16);
-                int second = Integer.parseInt(body.substring(2, 4), 16);
-                if (first == service && second == pid) {
-                    return hexToBytes(body);
-                }
-                if ((first & 0xF0) == 0 && body.length() >= 6) {
-                    int payloadService = Integer.parseInt(body.substring(2, 4), 16);
-                    int payloadPid = Integer.parseInt(body.substring(4, 6), 16);
-                    if (payloadService == service && payloadPid == pid) {
-                        return hexToBytes(body.substring(2));
-                    }
-                }
-            }
-        }
-        return null;
+        return ObdResponseParser.standard(raw, service, pid);
     }
 
     private TpmsSnapshot parse2106(String raw) {
@@ -307,19 +297,18 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
             int[] starts = {2, 10, 18, 26};
             int[] pressures = new int[4];
             int[] temperatures = new int[4];
-            boolean valid = true;
             for (int index = 0; index < 4; index++) {
                 int start = starts[index];
                 int pressureRaw = payload[start + 4] & 0xFF;
                 int temperatureRaw = payload[start + 5] & 0xFF;
-                if (pressureRaw == 0 || pressureRaw == 0xFF || temperatureRaw == 0 || temperatureRaw == 0xFF) {
-                    valid = false;
-                    break;
-                }
-                pressures[index] = (int) Math.round(pressureRaw * 1.72368925d);
-                temperatures[index] = temperatureRaw - 40;
+                pressures[index] = pressureRaw == 0 || pressureRaw == 0xFF
+                        ? 0 : (int) Math.round(pressureRaw * 1.72368925d);
+                temperatures[index] = temperatureRaw == 0xFF || pressures[index] == 0
+                        ? Integer.MIN_VALUE : temperatureRaw - 50;
+                if (temperatures[index] > 125) temperatures[index] = Integer.MIN_VALUE;
+                Log.d(TAG, "轮位 " + index + " 原始胎温=" + temperatureRaw + " 换算=" + temperatures[index]);
             }
-            if (valid) {
+            {
                 return new TpmsSnapshot(
                         pressures[0], pressures[1], pressures[2], pressures[3],
                         temperatures[0], temperatures[1], temperatures[2], temperatures[3],
@@ -367,6 +356,11 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
             assembler.begin(((first & 0x0F) << 8) | second);
             assembler.append(hexToBytes(body.substring(4)));
         } else if (type == 2) {
+            if (assembler.expectedLength <= 0 || (first & 15) != assembler.nextSequence) {
+                assembler.invalid = true;
+                return;
+            }
+            assembler.nextSequence = (assembler.nextSequence + 1) & 15;
             assembler.append(hexToBytes(body.substring(2)));
         } else {
             assembler.addSingle(hexToBytes(body));
@@ -434,6 +428,8 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
     private static final class Assembler {
         final String header;
         int expectedLength = -1;
+        int nextSequence = 1;
+        boolean invalid;
         byte[] single;
         final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 
@@ -449,6 +445,8 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
 
         void begin(int length) {
             expectedLength = length;
+            nextSequence = 1;
+            invalid = false;
             buffer.reset();
         }
 
@@ -457,8 +455,10 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
         }
 
         byte[] completeOrBest() {
+            if (invalid) return new byte[0];
             if (expectedLength > 0) {
                 byte[] all = buffer.toByteArray();
+                if (all.length < expectedLength) return new byte[0];
                 int take = Math.min(expectedLength, all.length);
                 if (take > 0) {
                     byte[] result = new byte[take];
@@ -480,11 +480,12 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
         final double currentCostYuan;
         final double fuelPriceYuanPerLiter;
         final boolean available;
+        final boolean speedFresh;
 
         FuelData(int speedKmh, double mafGps, double fuelRateLph,
                  double instantL100Km, double averageL100Km,
                  double tripFuelLiters, double currentCostYuan,
-                 double fuelPriceYuanPerLiter, boolean available) {
+                 double fuelPriceYuanPerLiter, boolean available, boolean speedFresh) {
             this.speedKmh = speedKmh;
             this.mafGps = mafGps;
             this.fuelRateLph = fuelRateLph;
@@ -494,10 +495,11 @@ public final class TucsonTpmsDataSource implements TpmsDataSource {
             this.currentCostYuan = currentCostYuan;
             this.fuelPriceYuanPerLiter = fuelPriceYuanPerLiter;
             this.available = available;
+            this.speedFresh = speedFresh;
         }
 
         static FuelData empty() {
-            return new FuelData(0, 0, 0, 0, 0, 0, 0, 0, false);
+            return new FuelData(0, 0, 0, 0, 0, 0, 0, 0, false, false);
         }
     }
 }

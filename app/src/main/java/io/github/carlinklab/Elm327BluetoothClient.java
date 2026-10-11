@@ -54,6 +54,7 @@ public final class Elm327BluetoothClient {
         this.listener = listener;
     }
 
+    @androidx.annotation.RequiresPermission(android.Manifest.permission.BLUETOOTH_CONNECT)
     public void connect(BluetoothDevice device) {
         executor.execute(() -> {
             disconnectInternal();
@@ -252,6 +253,7 @@ public final class Elm327BluetoothClient {
                 .replaceAll("[^0-9A-F]", "");
     }
 
+    @android.annotation.SuppressLint("MissingPermission") // SecurityException is handled for denied access.
     private static String safeName(BluetoothDevice device) {
         try {
             String name = device.getName();

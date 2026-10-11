@@ -39,10 +39,14 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
     private TucsonTpmsDataSource tpmsDataSource;
     private H264FrameEncoder videoEncoder;
     private CarLifeClient.Size videoSize;
-    private TpmsSnapshot lastSnapshot;
+    private volatile TpmsSnapshot lastSnapshot;
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
     private boolean started;
+    private static volatile CarLifeBridgeService active;
+
+    public static boolean isRunning() { return active != null && active.started; }
+    public static TpmsSnapshot latestSnapshot() { return active == null ? null : active.lastSnapshot; }
 
     public static void start(Context context, String host, int port) {
         Intent intent = new Intent(context, CarLifeBridgeService.class)
@@ -89,6 +93,12 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
         if (host == null || host.trim().isEmpty()) {
             host = "192.168.0.10";
         }
+        android.content.SharedPreferences prefs = getSharedPreferences("bridge", MODE_PRIVATE);
+        if (intent == null) {
+            host = prefs.getString("host", "192.168.0.10");
+            port = prefs.getInt("port", 35000);
+        }
+        prefs.edit().putString("host", host).putInt("port", port).apply();
         startForeground(NOTIFICATION_ID, buildNotification());
         startBridge(host, port);
         return START_STICKY;
@@ -99,6 +109,7 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
             return;
         }
         started = true;
+        active = this;
         acquireLocks();
         broadcastLog("后台服务启动：CarLife + ELM327");
         carLifeClient = new CarLifeClient(this, this);
@@ -106,6 +117,7 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
         FuelPriceClient.refresh(this);
         tpmsDataSource = new TucsonTpmsDataSource(this, host, port);
         tpmsDataSource.start(this);
+        getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, buildNotification());
     }
 
     private void stopBridge() {
@@ -114,6 +126,8 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
             return;
         }
         started = false;
+        active = null;
+        mainHandler.removeCallbacksAndMessages(null);
         if (videoEncoder != null) {
             videoEncoder.close();
             videoEncoder = null;
@@ -126,6 +140,8 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
             carLifeClient.shutdown();
             carLifeClient = null;
         }
+        videoSize = null;
+        lastSnapshot = null;
         releaseLocks();
         broadcastLog("后台服务已停止");
     }
@@ -204,7 +220,7 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
     }
 
     private void startVideoStream() {
-        if (videoEncoder != null || videoSize == null) {
+        if (!started || videoEncoder != null || videoSize == null) {
             return;
         }
         int fps = videoSize.frameRate <= 0 ? 10 : Math.min(videoSize.frameRate, 30);
