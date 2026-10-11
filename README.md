@@ -4,7 +4,7 @@ Android 手机端车辆互联与 TPMS 仪表实验项目，重点面向 2015/201
 
 > 这是一个面向自有车辆、互操作研究和停车调试的实验项目。它不是百度官方 CarLife 客户端，也无法把 Android 手机合法地伪装成 Apple CarPlay 设备。
 
-当前版本：**0.14.0**（Android 8.0+）。
+当前版本：**0.14.1**（Android 8.0+）。
 
 ![车机横屏仪表](docs/images/dashboard-0.14.0.png)
 
@@ -20,6 +20,10 @@ Android 手机端车辆互联与 TPMS 仪表实验项目，重点面向 2015/201
 - 手机首页提供唯一的功能入口；连接页支持独立轮胎卡片、可折叠日志和后台运行设置。
 - 支持自定义欢迎标题、油价省份和汽油标号，保存 ELM327 地址与端口。
 - 缺失或过期数据显示 N/A 或“—”；胎压异常以颜色区分。
+
+## 0.14.1 更新
+
+- 内部版本号提升到 24，支持覆盖安装内部版本号为 23 的旧调试包；功能沿用 0.14.0。
 
 ## 0.14.0 更新
 
@@ -57,7 +61,7 @@ Gradle 默认将 APK 写入 Linux 项目目录下的 `app/build/outputs/apk/debu
 ~~~bash
 mkdir -p "$HOME/outputs/CarLink-Lab"
 cp app/build/outputs/apk/debug/app-debug.apk \
-  "$HOME/outputs/CarLink-Lab/CarLink-Lab-0.14.0.apk"
+  "$HOME/outputs/CarLink-Lab/CarLink-Lab-0.14.1.apk"
 ~~~
 
 Windows 构建入口（仅供 Windows 开发环境使用）：
