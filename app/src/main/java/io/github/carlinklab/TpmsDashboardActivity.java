@@ -6,13 +6,12 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.activity.ComponentActivity;
 import androidx.annotation.Nullable;
 
 import java.io.File;
 import java.io.FileOutputStream;
 
-public final class TpmsDashboardActivity extends ComponentActivity implements TpmsDataSource.Listener {
+public final class TpmsDashboardActivity extends GlassActivity implements TpmsDataSource.Listener {
     private static final String TAG = "TpmsDashboard";
     private WebViewDashboardRenderer renderer;
     private TpmsDataSource dataSource;
@@ -26,25 +25,35 @@ public final class TpmsDashboardActivity extends ComponentActivity implements Tp
         setContentView(R.layout.activity_tpms_dashboard);
         statusView = findViewById(R.id.tpms_status);
         previewView = findViewById(R.id.tpms_preview);
-        android.util.DisplayMetrics display = getResources().getDisplayMetrics();
-        boolean export = getIntent().getBooleanExtra("export_preview", false);
-        int width = export ? 800 : Math.max(320, Math.round(display.widthPixels / display.density));
-        int height = export ? 480 : Math.max(480, Math.round(display.heightPixels / display.density) - 56);
-        previewBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
-        renderer = new WebViewDashboardRenderer(this, width, height);
-        renderer.copyTo(previewBitmap);
-        previewView.setImageBitmap(previewBitmap);
-
-        dataSource = new MockTpmsDataSource();
-        dataSource.start(this);
-        exportPreviewIfRequested();
+        previewView.post(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            android.util.DisplayMetrics display = getResources().getDisplayMetrics();
+            boolean export = getIntent().getBooleanExtra("export_preview", false);
+            int width = export ? 800 : Math.max(240, Math.round(previewView.getWidth() / display.density));
+            int height = export ? 480 : Math.max(240, Math.round(previewView.getHeight() / display.density));
+            if (!export && width > height) {
+                width = 800;
+                height = 480;
+            }
+            float outputScale = export ? 1f : display.density;
+            previewBitmap = Bitmap.createBitmap(Math.round(width * outputScale),
+                    Math.round(height * outputScale), Bitmap.Config.ARGB_8888);
+            renderer = new WebViewDashboardRenderer(this, width, height, outputScale);
+            renderer.copyTo(previewBitmap);
+            previewView.setImageBitmap(previewBitmap);
+            dataSource = new MockTpmsDataSource();
+            dataSource.start(this);
+            exportPreviewIfRequested();
+        });
     }
 
     @Override
     public void onSnapshot(TpmsSnapshot snapshot) {
         runOnUiThread(() -> {
+            if (renderer == null || isFinishing() || isDestroyed()) return;
             renderer.update(snapshot, null);
             previewView.postDelayed(() -> {
+                if (renderer == null || isFinishing() || isDestroyed()) return;
                 renderer.copyTo(previewBitmap);
                 previewView.setImageBitmap(previewBitmap);
             }, 150L);

@@ -1,72 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@color/surface"
-    android:orientation="vertical"
-    android:padding="16dp">
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/usb_diagnostics_title"
-        android:textColor="@color/text_primary"
-        android:textSize="24sp"
-        android:textStyle="bold" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:text="@string/usb_diagnostics_hint"
-        android:textColor="@color/text_secondary"
-        android:textSize="13sp" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/usb_refresh"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/usb_refresh" />
-
-        <Button
-            android:id="@+id/usb_copy"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="@string/usb_copy" />
-
-        <Button
-            android:id="@+id/usb_clear"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:text="@string/usb_clear" />
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android" android:layout_height="match_parent" android:id="@+id/glass_scroll" android:fillViewport="true" android:clipToPadding="false" android:scrollbars="none" android:layout_width="match_parent">
+    <LinearLayout android:orientation="vertical" android:padding="20dp" android:paddingBottom="28dp" android:descendantFocusability="beforeDescendants" android:focusableInTouchMode="true" android:layout_width="match_parent" android:layout_height="wrap_content">
+        <LinearLayout android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="16dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <ImageButton android:id="@+id/glass_back" android:layout_width="48dp" android:layout_height="48dp" android:background="@drawable/glass_button" android:src="@drawable/ic_back" android:contentDescription="@string/glass_back" android:padding="12dp" android:layout_marginEnd="14dp" />
+            <LinearLayout android:orientation="vertical" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content">
+                <TextView android:text="USB 诊断" android:textSize="28sp" android:textColor="@color/text_primary" android:lineSpacingExtra="3dp" android:textStyle="bold" android:layout_width="match_parent" android:layout_height="wrap_content" />
+                <TextView android:text="连接车机前，先确认通道" android:textSize="13sp" android:textColor="@color/text_secondary" android:lineSpacingExtra="3dp" android:layout_marginTop="3dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:background="@drawable/glass_card" android:padding="18dp" android:layout_marginBottom="16dp" android:elevation="2dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="连接准备" android:textSize="18sp" android:textColor="@color/text_primary" android:lineSpacingExtra="3dp" android:textStyle="bold" android:layout_marginBottom="12dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            <TextView android:text="@string/usb_diagnostics_hint" android:textSize="14sp" android:textColor="@color/text_secondary" android:lineSpacingExtra="3dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:background="@drawable/glass_card" android:padding="18dp" android:layout_marginBottom="16dp" android:elevation="2dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+            <TextView android:text="设备状态" android:textSize="18sp" android:textColor="@color/text_primary" android:lineSpacingExtra="3dp" android:textStyle="bold" android:layout_marginBottom="12dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            <Button android:id="@+id/usb_refresh" android:text="刷新设备状态" android:layout_marginTop="6dp" android:layout_marginBottom="6dp" android:layout_width="match_parent" android:layout_height="wrap_content" style="@style/Widget.CarLink.PrimaryButton" />
+            <LinearLayout android:orientation="horizontal" android:layout_marginTop="4dp" android:layout_marginBottom="4dp" android:layout_width="match_parent" android:layout_height="wrap_content">
+                <Button android:id="@+id/usb_copy" android:text="复制日志" android:layout_marginTop="6dp" android:layout_marginBottom="6dp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" />
+                <Button android:id="@+id/usb_clear" android:text="清空日志" android:layout_marginTop="6dp" android:layout_marginBottom="6dp" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="12dp" />
+            </LinearLayout>
+            <TextView android:text="连接日志" android:textSize="13sp" android:textColor="@color/text_secondary" android:lineSpacingExtra="3dp" android:layout_marginBottom="8dp" android:layout_marginTop="8dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            <ScrollView android:layout_height="220dp" android:background="@drawable/glass_inset" android:padding="14dp" android:nestedScrollingEnabled="true" android:layout_marginTop="10dp" android:layout_width="match_parent">
+                <TextView android:text="" android:textSize="12sp" android:textColor="@color/text_secondary" android:lineSpacingExtra="3dp" android:fontFamily="monospace" android:textIsSelectable="true" android:id="@+id/usb_log" android:layout_width="match_parent" android:layout_height="wrap_content" />
+            </ScrollView>
+        </LinearLayout>
     </LinearLayout>
-
-    <ScrollView
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_marginTop="12dp"
-        android:layout_weight="1"
-        android:background="@color/surface_variant"
-        android:padding="10dp">
-
-        <TextView
-            android:id="@+id/usb_log"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fontFamily="monospace"
-            android:textColor="@color/text_primary"
-            android:textIsSelectable="true"
-            android:textSize="12sp" />
-    </ScrollView>
-</LinearLayout>
+</androidx.core.widget.NestedScrollView>

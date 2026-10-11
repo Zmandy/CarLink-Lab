@@ -8,14 +8,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import androidx.activity.ComponentActivity;
 import androidx.annotation.Nullable;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public final class TpmsScanActivity extends ComponentActivity implements WifiElm327Client.Listener {
+public final class TpmsScanActivity extends GlassActivity implements WifiElm327Client.Listener {
     private final StringBuilder log = new StringBuilder();
     private final StringBuilder hits = new StringBuilder();
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);

@@ -8,14 +8,13 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import androidx.activity.ComponentActivity;
 import androidx.annotation.Nullable;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
 
-public final class CarLifeClientActivity extends ComponentActivity implements CarLifeBridgeService.EventListener {
+public final class CarLifeClientActivity extends GlassActivity implements CarLifeBridgeService.EventListener {
     private final StringBuilder log = new StringBuilder();
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("HH:mm:ss.SSS", Locale.US);
     private TextView logView;
@@ -33,7 +32,8 @@ public final class CarLifeClientActivity extends ComponentActivity implements Ca
                 statusView.setText("后台连接已停止");
                 metricsView.setText("等待车辆连接");
                 for (int id : new int[]{R.id.client_tire_fl, R.id.client_tire_fr, R.id.client_tire_rl, R.id.client_tire_rr}) {
-                    ((TextView) findViewById(id)).setText("等待胎压 / 胎温");
+                    String name = id == R.id.client_tire_fl ? "左前" : id == R.id.client_tire_fr ? "右前" : id == R.id.client_tire_rl ? "左后" : "右后";
+                    ((TextView) findViewById(id)).setText(name + "\n等待胎压 / 胎温");
                 }
             } else {
                 TpmsSnapshot latest = CarLifeBridgeService.latestSnapshot();
@@ -159,7 +159,7 @@ public final class CarLifeClientActivity extends ComponentActivity implements Ca
 
     private String tire(String label, int pressure, int temp, boolean old) {
         return label + "\n" + (old || pressure <= 0 ? "—" : pressure + " kPa")
-                + " / " + (old || temp == Integer.MIN_VALUE ? "—" : temp + "°C");
+                + "\n" + (old || temp == Integer.MIN_VALUE ? "胎温待更新" : temp + "°C");
     }
 
     @Override

@@ -1,11 +1,9 @@
 package io.github.carlinklab;
 
 import android.content.Context;
-import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
-import android.util.DisplayMetrics;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -31,6 +29,8 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
     private final WebView webView;
     private final int width;
     private final int height;
+    private final float renderDensity;
+    private final float outputScale;
     private final Runnable periodicRefresh = new Runnable() {
         @Override
         public void run() {
@@ -49,21 +49,27 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
     private String status = "waiting for TPMS data";
 
     public WebViewDashboardRenderer(Context context, int width, int height) {
+        this(context, width, height, 1f);
+    }
+
+    public WebViewDashboardRenderer(Context context, int width, int height, float outputScale) {
+        this.outputScale = outputScale;
         this.width = width;
         this.height = height;
-        this.frameBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        this.frameBitmap = Bitmap.createBitmap(Math.round(width * outputScale), Math.round(height * outputScale), Bitmap.Config.ARGB_8888);
         this.frameBitmap.eraseColor(Color.BLACK);
 
-        Configuration configuration = new Configuration(context.getResources().getConfiguration());
-        configuration.densityDpi = DisplayMetrics.DENSITY_DEFAULT;
-        Context webViewContext = context.createConfigurationContext(configuration);
-        webView = new WebView(webViewContext);
+        // Chromium uses the real display density even for a configuration-context WebView.
+        // Lay out in physical pixels, then scale the drawing back to the requested CSS frame.
+        renderDensity = context.getResources().getDisplayMetrics().density;
+        webView = new WebView(context);
         webView.setBackgroundColor(Color.BLACK);
         webView.setFocusable(false);
         webView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
+        settings.setTextZoom(100);
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(false);
@@ -81,6 +87,7 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
             public void onPageFinished(WebView view, String url) {
                 pageReady = true;
                 view.resumeTimers();
+                if (height > width) view.evaluateJavascript("document.documentElement.dataset.theme='light'", null);
                 pushDashboardData();
                 scheduleDraw(80L);
                 mainHandler.removeCallbacks(periodicRefresh);
@@ -99,10 +106,10 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
         });
 
         webView.measure(
-                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                View.MeasureSpec.makeMeasureSpec(height, View.MeasureSpec.EXACTLY)
+                View.MeasureSpec.makeMeasureSpec(Math.round(width * renderDensity), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(Math.round(height * renderDensity), View.MeasureSpec.EXACTLY)
         );
-        webView.layout(0, 0, width, height);
+        webView.layout(0, 0, Math.round(width * renderDensity), Math.round(height * renderDensity));
         webView.loadUrl("file:///android_asset/tpms_template.html");
     }
 
@@ -147,6 +154,7 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
             synchronized (frameLock) {
                 Canvas canvas = new Canvas(frameBitmap);
                 canvas.drawColor(Color.BLACK);
+                canvas.scale(outputScale / renderDensity, outputScale / renderDensity);
                 webView.draw(canvas);
             }
         } catch (Exception error) {

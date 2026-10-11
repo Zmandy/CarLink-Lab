@@ -19,7 +19,6 @@ import android.os.Parcelable;
 import android.widget.Button;
 import android.widget.TextView;
 
-import androidx.activity.ComponentActivity;
 import androidx.annotation.Nullable;
 
 import java.text.SimpleDateFormat;
@@ -27,7 +26,7 @@ import java.util.Date;
 import java.util.Locale;
 import java.util.Map;
 
-public final class UsbDiagnosticsActivity extends ComponentActivity {
+public final class UsbDiagnosticsActivity extends GlassActivity {
     private static final String ACTION_USB_PERMISSION = "io.github.carlinklab.USB_PERMISSION";
 
     private final StringBuilder log = new StringBuilder();

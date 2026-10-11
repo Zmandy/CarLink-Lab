@@ -17,7 +17,6 @@ import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
-import androidx.activity.ComponentActivity;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
@@ -31,7 +30,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.util.concurrent.ExecutionException;
 
-public final class MainActivity extends ComponentActivity {
+public final class MainActivity extends GlassActivity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ActivityResultLauncher<String[]> openAudio = registerForActivityResult(
             new ActivityResultContracts.OpenDocument(),

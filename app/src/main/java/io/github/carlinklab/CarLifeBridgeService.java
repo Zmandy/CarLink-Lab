@@ -188,7 +188,7 @@ public final class CarLifeBridgeService extends Service implements CarLifeClient
                 PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
         );
         return new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth)
+                .setSmallIcon(R.drawable.ic_notification_car)
                 .setContentTitle(getString(R.string.bridge_notification_title))
                 .setContentText(getString(R.string.bridge_notification_text))
                 .setOngoing(true)

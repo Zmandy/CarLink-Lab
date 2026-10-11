@@ -11,7 +11,6 @@ import android.provider.Settings;
 import android.widget.Button;
 import android.widget.TextView;
 
-import androidx.activity.ComponentActivity;
 import androidx.annotation.Nullable;
 
 import java.io.IOException;
@@ -31,7 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class CarLifeProbeActivity extends ComponentActivity {
+public final class CarLifeProbeActivity extends GlassActivity {
     private static final int[] CARLIFE_PORTS = {7240, 8240, 9240, 9241, 9242, 9340};
 
     private final StringBuilder log = new StringBuilder();

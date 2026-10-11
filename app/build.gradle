@@ -8,8 +8,9 @@ android {
         applicationId "io.github.carlinklab"
         minSdk 26
         targetSdk 34
-        versionCode 24
-        versionName "0.14.1"
+        testInstrumentationRunner "io.github.carlinklab.LayoutAuditInstrumentation"
+        versionCode 25
+        versionName "0.15.0"
     }
 
     buildTypes {

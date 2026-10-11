@@ -63,4 +63,5 @@
     <string name="dashboard_title_hint">仪表标题</string>
     <string name="fuel_province_hint">油价省份，例如 上海</string>
     <string name="fuel_grade_hint">汽油标号，例如 92#</string>
+    <string name="glass_back">返回上一页</string>
 </resources>

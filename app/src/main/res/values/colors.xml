@@ -1,8 +1,1 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <color name="surface">#0B141D</color>
-    <color name="surface_variant">#142431</color>
-    <color name="primary">#65DDC8</color>
-    <color name="text_primary">#F4F7F9</color>
-    <color name="text_secondary">#93A8BA</color>
-</resources>
+<resources><color name="surface">#EBF0FA</color><color name="surface_variant">#DAE5F7</color><color name="primary">#326FE7</color><color name="text_primary">#142440</color><color name="text_secondary">#52647D</color></resources>
