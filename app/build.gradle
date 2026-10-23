@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+def localConfig = new Properties()
+def localConfigFile = rootProject.file('local.properties')
+if (localConfigFile.exists()) localConfigFile.withInputStream { localConfig.load(it) }
+
 android {
     namespace 'io.github.carlinklab'
     compileSdk 35
@@ -8,9 +12,17 @@ android {
         applicationId "io.github.carlinklab"
         minSdk 26
         targetSdk 34
-        testInstrumentationRunner "io.github.carlinklab.LayoutAuditInstrumentation"
-        versionCode 25
-        versionName "0.15.0"
+        testInstrumentationRunner providers.gradleProperty('auditRunner').getOrElse('io.github.carlinklab.LayoutAuditInstrumentation')
+        versionCode 30
+        versionName "0.19.0"
+        manifestPlaceholders = [amapApiKey: localConfig.getProperty('amap.api.key', '')]
+        ndk { abiFilters 'arm64-v8a' }
+    }
+
+    signingConfigs {
+        debug {
+            storeFile rootProject.file('signing/carlife-debug.keystore')
+        }
     }
 
     buildTypes {
@@ -27,6 +39,8 @@ android {
 }
 
 dependencies {
+    implementation 'com.amap.api:navi-3dmap-location-search:11.3.100_3dmap11.3.100_loc11.3.000_sea9.8.1'
+    testImplementation 'junit:junit:4.13.2'
     implementation 'androidx.activity:activity:1.9.3'
     implementation 'androidx.media3:media3-exoplayer:1.5.1'
     implementation 'androidx.media3:media3-session:1.5.1'

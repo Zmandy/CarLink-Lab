@@ -24,3 +24,14 @@ FuelPriceClient 默认访问第三方油价接口。该接口不由本项目维�
 ## 商标
 
 Baidu、CarLife、Apple、CarPlay、Hyundai、Kia、Tucson 等名称属于各自权利人。
+
+## 高德 Android 导航 SDK
+
+使用 `com.amap.api:navi-3dmap-location-search` 提供地图、定位、搜索与导航。
+SDK 和地图数据适用高德相应服务条款，不适用本项目 MIT License。
+Android Key 通过本地配置注入；启用 SDK 前由用户确认说明，定位权限单独申请。
+
+## Windows 接收器工具
+
+电脑接收器通过独立进程调用 ADB 和 FFmpeg；仓库不包含工具二进制。
+构建交付包时须保留所分发工具的许可证、来源与版本记录。

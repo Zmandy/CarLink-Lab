@@ -31,13 +31,14 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
     private final int height;
     private final float renderDensity;
     private final float outputScale;
+    private final boolean carHome;
     private final Runnable periodicRefresh = new Runnable() {
         @Override
         public void run() {
             if (pageReady && !closed) pushDashboardData();
             drawFrameNow();
             if (!closed) {
-                mainHandler.postDelayed(this, PERIODIC_REFRESH_MS);
+                mainHandler.postDelayed(this, carHome ? 1_000L : PERIODIC_REFRESH_MS);
             }
         }
     };
@@ -53,6 +54,11 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
     }
 
     public WebViewDashboardRenderer(Context context, int width, int height, float outputScale) {
+        this(context, width, height, outputScale, false);
+    }
+
+    public WebViewDashboardRenderer(Context context, int width, int height, float outputScale, boolean carHome) {
+        this.carHome = carHome;
         this.outputScale = outputScale;
         this.width = width;
         this.height = height;
@@ -91,7 +97,7 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
                 pushDashboardData();
                 scheduleDraw(80L);
                 mainHandler.removeCallbacks(periodicRefresh);
-                mainHandler.postDelayed(periodicRefresh, PERIODIC_REFRESH_MS);
+                mainHandler.postDelayed(periodicRefresh, carHome ? 1_000L : PERIODIC_REFRESH_MS);
                 Log.d(TAG, "TPMS template loaded: " + url);
                 view.evaluateJavascript(
                         "(window.innerWidth + 'x' + window.innerHeight + '@' + window.devicePixelRatio)",
@@ -110,7 +116,7 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
                 View.MeasureSpec.makeMeasureSpec(Math.round(height * renderDensity), View.MeasureSpec.EXACTLY)
         );
         webView.layout(0, 0, Math.round(width * renderDensity), Math.round(height * renderDensity));
-        webView.loadUrl("file:///android_asset/tpms_template.html");
+        webView.loadUrl("file:///android_asset/" + (carHome ? "car_home.html" : "tpms_template.html"));
     }
 
     public void update(@Nullable TpmsSnapshot snapshot, String status) {
@@ -169,6 +175,11 @@ public final class WebViewDashboardRenderer implements AutoCloseable {
         try {
             JSONObject data = new JSONObject();
             data.put("title", DashboardPreferences.getTitle(webView.getContext()));
+            if (carHome) {
+                java.util.Date now = new java.util.Date();
+                data.put("clock", new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.CHINA).format(now));
+                data.put("date", new java.text.SimpleDateFormat("M月d日 EEEE", java.util.Locale.CHINA).format(now));
+            }
             if (snapshot != null && !snapshot.stale
                     && System.currentTimeMillis() - snapshot.updatedAtMillis < 30_000L) {
                 JSONArray tires = new JSONArray();

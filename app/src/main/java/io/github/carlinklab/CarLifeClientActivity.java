@@ -3,12 +3,16 @@ package io.github.carlinklab;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.media.projection.MediaProjectionManager;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -25,9 +29,26 @@ public final class CarLifeClientActivity extends GlassActivity implements CarLif
     private EditText hostInput;
     private EditText portInput;
     private TextView metricsView;
+    private TextView projectionView;
+    private Button projectionButton;
+    private Button dashboardButton;
+    private Button carHomeButton;
+    private boolean projectionConsentPending;
+    private final ActivityResultLauncher<Intent> projectionPermission = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                projectionConsentPending = false;
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    if (CarLifeBridgeService.canProject()) {
+                        CarLifeBridgeService.project(this, result.getData());
+                        append("已授权屏幕共享，正在切换车机画面；请打开导航应用");
+                    } else append("车机视频连接已断开；连接恢复后请重新开始投屏");
+                } else append("已取消屏幕共享，继续显示胎压仪表");
+                updateProjectionControls();
+            });
     private final android.os.Handler refreshHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final Runnable refreshStatus = new Runnable() {
         @Override public void run() {
+            updateProjectionControls();
             if (!CarLifeBridgeService.isRunning()) {
                 statusView.setText("后台连接已停止");
                 metricsView.setText("等待车辆连接");
@@ -40,7 +61,7 @@ public final class CarLifeClientActivity extends GlassActivity implements CarLif
                 if (latest != null) onSnapshot(latest);
                 else statusView.setText("后台连接运行中 · 等待车辆数据");
             }
-            refreshHandler.postDelayed(this, 5_000L);
+            refreshHandler.postDelayed(this, 1_000L);
         }
     };
 
@@ -49,6 +70,27 @@ public final class CarLifeClientActivity extends GlassActivity implements CarLif
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_carlife_client);
         metricsView = findViewById(R.id.client_metrics);
+        projectionView = findViewById(R.id.client_projection_status);
+        projectionButton = findViewById(R.id.client_project);
+        dashboardButton = findViewById(R.id.client_dashboard);
+        carHomeButton = findViewById(R.id.client_car_home);
+        carHomeButton.setOnClickListener(view -> CarLifeBridgeService.showCarHome(this));
+        findViewById(R.id.client_navigation).setOnClickListener(view -> startActivity(new Intent(this, NavigationActivity.class)));
+        projectionButton.setOnClickListener(view -> {
+            if (!CarLifeBridgeService.canProject()) {
+                append("请先连接车机，等待胎压仪表显示后再开始投屏");
+                return;
+            }
+            try {
+                projectionConsentPending = true;
+                projectionPermission.launch(getSystemService(MediaProjectionManager.class).createScreenCaptureIntent());
+            } catch (RuntimeException error) {
+                projectionConsentPending = false;
+                append("无法打开屏幕共享授权：" + error.getMessage());
+            }
+            updateProjectionControls();
+        });
+        dashboardButton.setOnClickListener(view -> CarLifeBridgeService.showDashboard(this));
         findViewById(R.id.client_toggle_log).setOnClickListener(view -> {
             android.view.View panel = findViewById(R.id.client_log_panel);
             panel.setVisibility(panel.getVisibility() == android.view.View.VISIBLE ? android.view.View.GONE : android.view.View.VISIBLE);
@@ -91,10 +133,33 @@ public final class CarLifeClientActivity extends GlassActivity implements CarLif
             requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 900);
         }
         append("CarLife 后台客户端就绪");
+        if (getIntent().getBooleanExtra("car_home", false)) {
+            getSharedPreferences("bridge", MODE_PRIVATE).edit().putBoolean("car_home", true).apply();
+        }
         if (getIntent().getBooleanExtra("auto_start", false)) {
             startBridge();
         }
+        if (getIntent().getBooleanExtra("car_home", false)) {
+            CarLifeBridgeService.showCarHome(this);
+        }
         append("先确认 ELM327 WiFi 可连接，再点击开始。服务会保持 CarLife 与 OBD 后台连接。");
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent.getBooleanExtra("auto_start", false)) startBridge();
+        if (intent.getBooleanExtra("car_home", false)) CarLifeBridgeService.showCarHome(this);
+    }
+
+    private void updateProjectionControls() {
+        if (projectionView == null) return;
+        boolean projecting = CarLifeBridgeService.isProjecting();
+        projectionView.setText(CarLifeBridgeService.projectionStatus());
+        projectionButton.setEnabled(!projectionConsentPending && !projecting && CarLifeBridgeService.canProject());
+        dashboardButton.setEnabled(CarLifeBridgeService.isRunning() && (projecting || CarLifeBridgeService.isCarHome() || CarLifeBridgeService.isNavigationMode()));
+        carHomeButton.setEnabled(CarLifeBridgeService.isRunning() && (projecting || !CarLifeBridgeService.isCarHome() || CarLifeBridgeService.isNavigationMode()));
     }
 
     private void startBridge() {
@@ -165,6 +230,7 @@ public final class CarLifeClientActivity extends GlassActivity implements CarLif
     @Override
     protected void onResume() {
         super.onResume();
+        updateProjectionControls();
         android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
         TextView battery = findViewById(R.id.client_battery_status);
         battery.setText((pm.isIgnoringBatteryOptimizations(getPackageName()) ? "系统省电限制已解除。" : "系统省电限制仍开启。")

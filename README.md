@@ -4,7 +4,9 @@ Android 手机端车辆互联与 TPMS 仪表实验项目，重点面向 2015/201
 
 > 这是一个面向自有车辆、互操作研究和停车调试的实验项目。它不是百度官方 CarLife 客户端，也无法把 Android 手机合法地伪装成 Apple CarPlay 设备。
 
-当前版本：**0.15.0**（Android 8.0+）。
+当前源码版本：**0.19.0**（开发版本，Android 8.0+，当前 APK 仅包含 ARM64）。最近完整设备验证记录对应 0.18.0。
+
+电脑端 CarLife 模拟接收器与用法见 [desktop-headunit](desktop-headunit/README.md)，支持通过 ADB 接收手机或 Android 模拟器上的 APP 视频，也可在没有手机时运行本地自检。
 
 <img src="docs/images/home-0.15.0.png" width="320" alt="液态玻璃手机首页">
 
@@ -12,6 +14,7 @@ Android 手机端车辆互联与 TPMS 仪表实验项目，重点面向 2015/201
 
 ## 功能
 
+- 支持实验性导航投屏：系统授权共享导航应用或屏幕后，通过现有 CarLife 视频通道显示；可恢复胎压仪表，后台车辆采集继续运行。
 - Android 前台服务维持 CarLife TCP 通道和 WiFi ELM327 连接，并持有 CPU / WiFi 锁。
 - 在手机与 CarLife 车机之间建立本地 TCP 通道，发送 H.264 仪表画面。
 - 通过 WiFi ELM327 轮询 Hyundai Mode 21 TPMS 数据，分别显示四轮胎压与胎温。
@@ -21,6 +24,31 @@ Android 手机端车辆互联与 TPMS 仪表实验项目，重点面向 2015/201
 - 手机首页提供唯一的功能入口；连接页支持独立轮胎卡片、可折叠日志和后台运行设置。
 - 支持自定义欢迎标题、油价省份和汽油标号，保存 ELM327 地址与端口。
 - 缺失或过期数据显示 N/A 或“—”；胎压异常以颜色区分。
+
+## 当前进度（2026-10-23）
+
+- 已实现独立车载桌面和高德独立导航：地点搜索、驾车算路、模拟导航、地图与胎压侧栏，以及手机端导航语音。
+- 独立画面不依赖手机屏幕共享；小米 14 Ultra 配合 Windows 模拟车机的熄屏传输、暂停恢复和重连已有验证记录。
+- 原胎压仪表连接已有用户确认的稳定运行记录；实际 GPS 行驶、后台持续定位和独立导航在真实车机上的解码、延迟与稳定性仍待验证。
+- 尚未实现车机音频通道、触摸反控、语音搜索和多路线选择。
+- 0.19.0 是当前源码版本号，不代表新增功能或实车验收已完成；0.18.0 的设备验证时间为 2026-10-18。
+
+使用和验证记录：[高德独立导航](docs/amap-navigation-0.18.0.md)、[独立车载桌面](docs/independent-car-home-0.17.0.md)、[导航屏幕共享](docs/navigation-projection-0.16.0.md)。
+
+高德导航需要在本地 `local.properties` 配置 `amap.api.key`，包名与签名须匹配高德控制台。未配置 Key 仍可构建，但无法初始化导航。Key、签名和安装包不提交到仓库。
+
+## 0.16.1 更新
+
+- 使用用户提供的蓝色现代汽车图标替换桌面图标、圆形图标和首页图标；功能沿用 0.16.0。
+
+## 0.16.0 更新
+
+- 车辆连接页增加“开始导航投屏”和“恢复胎压仪表”；车机视频通道就绪后开放投屏入口。
+- 新增 Surface 输入的 H.264 屏幕共享编码路径，按车机协商的尺寸发送画面，并在关键帧前携带编码参数。
+- 处理 Android 14 屏幕共享授权及前台服务类型；每次重新投屏都申请新授权，不保存或重放授权 token。
+- 主动停止、系统终止共享、编码失败时恢复仪表；车机停止视频或断开时结束共享，恢复连接后需重新授权。
+- 本轮仅传输画面，导航操作仍在手机完成；不包含导航声音传输、车机反控、导航与仪表同屏或熄屏持续投屏。
+- 使用步骤与实车验证清单见 [导航投屏说明](docs/navigation-projection-0.16.0.md)。
 
 ## 0.15.0 更新
 
@@ -51,7 +79,7 @@ Android 手机端车辆互联与 TPMS 仪表实验项目，重点面向 2015/201
 
 0.15.0 已在小米 14 Ultra 上覆盖安装并逐页检查六个页面。普通字体、1.3 倍字体、320dp 窄屏大字体及 914dp 横屏模拟共 24 次页面测量，按钮无重叠、无文字裁切，触控尺寸达到 48dp。仪表另通过五种尺寸的浏览器检查、17 项标准 OBD / TPMS / 模拟 ELM 回归、APK 构建与 Android Lint。详见 [界面检查记录](docs/ui-audit-0.15.0.md)。
 
-**真实 ELM327 数据、车机视频与小米锁屏持续运行仍需车辆联调。**
+**上述为历史界面验证记录；最新导航验证范围见“当前进度”及对应版本文档，电脑接收通过不等于真实车机通过。**
 
 不同市场、年款、ECU、车机固件和适配器可能使用不同端口、CAN 地址或数据布局。请先保存原始日志，再修改协议代码。
 
@@ -61,29 +89,15 @@ Android 手机端车辆互联与 TPMS 仪表实验项目，重点面向 2015/201
 
 要求 JDK 17、Android SDK Platform 35 和对应的 Build Tools。Gradle Wrapper 会下载项目指定的 Gradle 版本；首次构建需要网络及已接受的 SDK 许可。
 
-Linux / WSL：
-
-~~~bash
-# ANDROID_HOME 指向 Linux 文件系统中的 Android SDK。
-# 也可以在本地、未纳入 Git 的 local.properties 中配置 sdk.dir。
-bash ./gradlew assembleDebug lintDebug
-~~~
-
-Gradle 默认将 APK 写入 Linux 项目目录下的 `app/build/outputs/apk/debug/app-debug.apk`。将交付包保存到 Linux 输出目录：
-
-~~~bash
-mkdir -p "$HOME/outputs/CarLink-Lab"
-cp app/build/outputs/apk/debug/app-debug.apk \
-  "$HOME/outputs/CarLink-Lab/CarLink-Lab-0.15.0.apk"
-~~~
-
-Windows 构建入口（仅供 Windows 开发环境使用）：
+Windows 原生构建入口：
 
 ~~~powershell
-.\gradlew.bat assembleDebug lintDebug
+.\gradlew.bat assembleDebug testDebugUnitTest lintDebug
 ~~~
 
-调试 APK 使用构建环境中的调试签名。覆盖安装需要与旧版使用相同的签名，仅文件名和版本号一致并不足以保证可覆盖安装。
+APK 默认写入 `app\build\outputs\apk\debug\app-debug.apk`。交付物按日期保存至 `D:\CodexMigration\outputs\` 的主题子目录。
+
+调试 APK 保留迁移后单独配置的原项目调试签名。覆盖安装需要与旧版使用相同的签名，仅文件名和版本号一致并不足以保证可覆盖安装。
 
 ### 使用
 

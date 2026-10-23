@@ -46,3 +46,8 @@ keystore.properties
 .DS_Store
 Thumbs.db
 *.swp
+
+# Local test outputs and captures
+/work/
+/github-repository.png
+/desktop-headunit/logs/

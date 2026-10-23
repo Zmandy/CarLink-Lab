@@ -31,6 +31,7 @@ public final class H264FrameEncoder implements AutoCloseable {
     private final int frameRate;
     private final Listener listener;
     private final AtomicBoolean running = new AtomicBoolean(false);
+    private final AtomicBoolean closed = new AtomicBoolean(false);
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
     private final WebViewDashboardRenderer renderer;
     private final Bitmap bitmap;
@@ -45,11 +46,15 @@ public final class H264FrameEncoder implements AutoCloseable {
     private long frameIndex;
 
     public H264FrameEncoder(Context context, int width, int height, int frameRate, Listener listener) {
+        this(context, width, height, frameRate, listener, false);
+    }
+
+    public H264FrameEncoder(Context context, int width, int height, int frameRate, Listener listener, boolean carHome) {
         this.width = width;
         this.height = height;
         this.frameRate = Math.max(1, Math.min(frameRate <= 0 ? 10 : frameRate, 30));
         this.listener = listener;
-        this.renderer = new WebViewDashboardRenderer(context, width, height);
+        this.renderer = new WebViewDashboardRenderer(context, width, height, 1f, carHome);
         this.bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         this.inputBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
         this.pixels = new int[width * height];
@@ -124,8 +129,16 @@ public final class H264FrameEncoder implements AutoCloseable {
 
     @Override
     public void close() {
+        if (!closed.compareAndSet(false, true)) return;
         running.set(false);
-        scheduler.shutdownNow();
+        // Release on the encoding thread, after any frame already in progress.
+        // Switching sources must not block the service main thread on a socket write.
+        scheduler.execute(this::releaseCodec);
+        scheduler.shutdown();
+        renderer.close();
+    }
+
+    private synchronized void releaseCodec() {
         if (codec != null) {
             try {
                 codec.stop();
@@ -139,7 +152,6 @@ public final class H264FrameEncoder implements AutoCloseable {
             }
             codec = null;
         }
-        renderer.close();
     }
 
     private void fillYuv(Image image, int[] argb) {

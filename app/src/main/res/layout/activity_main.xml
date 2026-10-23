@@ -8,7 +8,7 @@
             </LinearLayout>
         </LinearLayout>
         <LinearLayout android:orientation="vertical" android:background="@drawable/glass_card" android:padding="18dp" android:layout_marginBottom="16dp" android:elevation="2dp" android:layout_width="match_parent" android:layout_height="wrap_content">
-            <ImageView android:layout_width="52dp" android:layout_height="52dp" android:src="@drawable/ic_launcher_legacy" android:contentDescription="@string/app_name" android:layout_marginBottom="12dp" />
+            <ImageView android:layout_width="52dp" android:layout_height="52dp" android:src="@mipmap/ic_launcher" android:contentDescription="@string/app_name" android:layout_marginBottom="12dp" />
             <TextView android:text="每一次出发&#10;都心中有数" android:textSize="30sp" android:textColor="@color/text_primary" android:lineSpacingExtra="3dp" android:textStyle="bold" android:layout_marginBottom="8dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
             <TextView android:text="胎压、胎温与实时油耗，一眼掌握。" android:textSize="14sp" android:textColor="@color/text_secondary" android:lineSpacingExtra="3dp" android:layout_marginBottom="16dp" android:layout_width="match_parent" android:layout_height="wrap_content" />
             <Button android:id="@+id/carlife_client" android:text="连接车辆与实时仪表" android:layout_marginTop="6dp" android:layout_marginBottom="6dp" android:layout_width="match_parent" android:layout_height="wrap_content" style="@style/Widget.CarLink.PrimaryButton" />
