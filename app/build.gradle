@@ -39,7 +39,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.amap.api:navi-3dmap-location-search:11.3.100_3dmap11.3.100_loc11.3.000_sea9.8.1'
+    implementation 'com.amap.api:navi-3dmap-location-search:11.3.100_3dmap11.3.100_loc11.3.101_sea9.8.1'
     testImplementation 'junit:junit:4.13.2'
     implementation 'androidx.activity:activity:1.9.3'
     implementation 'androidx.media3:media3-exoplayer:1.5.1'
